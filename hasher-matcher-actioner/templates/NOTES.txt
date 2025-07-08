@@ -1,0 +1,125 @@
+{{- if .Values.roleGroups }}
+{{- $enabledRoles := list }}
+{{- range $roleName, $roleConfig := .Values.roleGroups }}
+{{- if $roleConfig.enabled }}
+{{- $enabledRoles = append $enabledRoles $roleName }}
+{{- end }}
+{{- end }}
+
+{{- if $enabledRoles }}
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named {{ .Release.Name }}.
+
+{{ if .Values.nginx.enabled -}}
+## Accessing the Application
+
+The hasher-matcher-actioner application is accessible through nginx:
+
+ 1. Start a port forward to the nginx service:
+
+   {{ if .Values.nginx.tls.enabled -}}
+   kubectl port-forward svc/{{ .Release.Name  }}-nginx 8443:8443
+   {{ else -}}
+   kubectl port-forward svc/{{ .Release.Name  }}-nginx 8080:8080
+   {{- end }}
+
+ 2. Navigate in your browser through the forwarded port
+  
+   {{ if .Values.nginx.tls.enabled -}}
+   https://localhost:8443
+   {{ else -}}
+   http://localhost:8080
+   {{- end }}
+
+### Available Endpoints:
+- **UI**: `/ui/` - Web interface for managing the application (this is the default route)
+- **Hasher**: `/h/` - Hashing service endpoints
+- **Matcher**: `/m/` - Matching service endpoints  
+- **Curator**: `/c/` - Curator service endpoints
+
+{{- end }}
+
+## Deployed Components
+
+The following role groups are enabled:
+{{- range $enabledRoles }}
+- **{{ . }}**: {{ index $.Values.roleGroups . "replicas" | default 1 }} replica(s)
+{{- end }}
+
+{{ if .Values.scheduler.enabled -}}
+The **scheduler** is enabled.
+{{- end }}
+
+{{ if .Values.postgresql.enabled -}}
+## Database
+
+PostgreSQL database is deployed with:
+- **Database**: {{ .Values.postgresql.auth.database }}
+- **Username**: {{ .Values.postgresql.auth.username }}
+- **Host**: {{ .Values.database.host }}
+- **Port**: {{ .Values.database.port }}
+{{- end }}
+
+## Monitoring
+
+To monitor the deployment:
+
+```bash
+# Check pod status
+kubectl get pods -l app.kubernetes.io/name={{ include "hasher-matcher-actioner.name" . }}
+
+# Check services
+kubectl get svc -l app.kubernetes.io/name={{ include "hasher-matcher-actioner.name" . }}
+
+# View logs
+kubectl logs -l app.kubernetes.io/name={{ include "hasher-matcher-actioner.name" . }}
+```
+
+## Troubleshooting
+
+If you encounter issues:
+
+1. Check pod status and logs
+2. Verify database connectivity
+3. Ensure all required secrets are created
+4. Check the nginx configuration
+
+## Next Steps
+
+1. Access the UI to configure your first bank
+2. Set up threat exchange connections
+3. Configure hashing and matching rules
+
+For more information, visit: https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner
+
+{{- else }}
+## No Role Groups Enabled
+
+No role groups are currently enabled. Please configure at least one role group in your values file.
+
+Example configuration:
+```yaml
+roleGroups:
+  hma:
+    enabled: true
+    replicas: 1
+    config: |
+      PRODUCTION = True
+      UI_ENABLED = True
+      ROLE_HASHER = True
+      ROLE_MATCHER = True
+      ROLE_CURATOR = True
+```
+{{- end }}
+
+{{- else }}
+## No Role Groups Configured
+
+No role groups are configured. Please add role group configurations to your values file.
+
+See the values.yaml file for examples of different deployment patterns:
+- Monolithic deployment (all roles in one pod)
+- Distributed deployment (separate pods for each role)
+- Custom role combinations
+{{- end }}

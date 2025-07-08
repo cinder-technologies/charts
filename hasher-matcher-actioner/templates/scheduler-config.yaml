@@ -1,0 +1,11 @@
+{{- if and .Values.scheduler .Values.scheduler.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler
+  labels:
+    {{- include "hasher-matcher-actioner.labels" . | nindent 4 }}
+data:
+  omm_config.py: |
+{{- tpl .Values.scheduler.config . | nindent 4 }}
+{{- end }}
