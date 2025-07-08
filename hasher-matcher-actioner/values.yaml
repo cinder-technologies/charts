@@ -1,0 +1,379 @@
+nameOverride: ""
+
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/facebook/threatexchange/hma
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+  
+imagePullSecrets: []
+
+secret:
+  create: false
+  name: hasher-matcher-actioner
+
+database:
+  host: hma-postgresql
+  port: 5432
+  name: media_match
+  user: media_match
+  # !!! This is just an example, you should use a secret instead
+  # password: "hunter2"
+
+migration:
+  hook:
+    enabled: false
+
+  extraEnv:
+    - name: OMM_SQLALCHEMY_ENGINE_LOG_LEVEL
+      value: "INFO"
+
+roleDefaults:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+
+  revisionHistoryLimit: 1
+
+  service:
+    type: ClusterIP
+    port: 5000
+    annotations:
+      foo: bar
+
+# roleAffinityTemplate: |
+#   podAntiAffinity:
+#     requiredDuringSchedulingIgnoredDuringExecution:
+#       - topologyKey: kubernetes.io/hostname
+#         labelSelector:
+#           matchExpressions:
+#             - key: app.kubernetes.io/component
+#               operator: In
+#               values:
+#                 - {{ .roleName }}
+
+# roleTopologySpreadConstraintsTemplate: |
+#   - maxSkew: 1
+#     topologyKey: topology.kubernetes.io/zone
+#     whenUnsatisfiable: DoNotSchedule
+#     labelSelector:
+#       matchExpressions:
+#         - key: app.kubernetes.io/name
+#           operator: In
+#           values:
+#             - {{ .roleName }}
+
+configValues:
+  database: |
+    import os
+
+    from OpenMediaMatch.storage.postgres.impl import DefaultOMMStore
+
+    DBHOST = os.environ["POSTGRES_HOST"]
+    DBPORT = os.environ["POSTGRES_PORT"]
+    DBNAME = os.environ["POSTGRES_DB"]
+    DBUSER = os.environ["POSTGRES_USER"]
+    DBPASS = os.environ["POSTGRES_PASSWORD"]
+
+    DATABASE_URI = f"postgresql+psycopg2://{DBUSER}:{DBPASS}@{DBHOST}:{DBPORT}/{DBNAME}"
+
+  logging: |
+    from logging.config import dictConfig
+    FLASK_LOGGING_CONFIG = dictConfig(
+      {
+        "version": 1,
+        "formatters": {
+          "default": {
+            "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
+          }
+        },
+        "handlers": {
+          "wsgi": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://flask.logging.wsgi_errors_stream",
+            "formatter": "default",
+        }
+        },
+        "root": {"level": "INFO", "handlers": ["wsgi"]},
+      }
+    )
+
+roleGroups: []
+  # # example of a monolithic workload
+  # all-in-one:
+  #   enabled: true
+  #   replicas: 2
+  #   env:
+  #     - name: ROLE_HASHER
+  #       value: "True"
+  #     - name: ROLE_MATCHER
+  #       value: "True"
+  #     - name: ROLE_CURATOR
+  #       value: "True"
+  #     - name: TASK_FETCHER
+  #       value: "True"
+  #     - name: TASK_INDEXER
+  #       value: "True"
+  #     - name: TASK_INDEX_CACHE
+  #       value: "True"
+
+  # # example of a hasher & matcher in one 
+  # (NOTE: the pathType is ImplementationSpecific and assumes that the ingress controller is configured to handle a regex path)
+  # hasher-matcher:
+  #   enabled: true
+  #   replicas: 2
+  #   config: |
+  #     {{ $.Values.configValues.logging }}
+  #     {{ $.Values.configValues.database }}
+  #     PRODUCTION = True
+  #     ROLE_HASHER = True
+  #     ROLE_MATCHER = True
+  #   service:
+  #     create: true
+  #   ingressRule:
+  #     path: /[hm]
+  #     pathType: ImplementationSpecific
+  #   pdb:
+  #     maxUnavailable: 1
+
+  # # example of dedicated hashers
+  # hasher:
+  #   enabled: true
+  #   replicas: 2
+  #   resources:
+  #     requests:
+  #       cpu: 100m
+  #       memory: 128Mi
+  #     limits:
+  #       memory: 256Mi
+  #   config: |
+  #     {{ $.Values.configValues.logging }}
+  #     {{ $.Values.configValues.database }}
+  #     PRODUCTION = True
+  #     ROLE_HASHER = True
+  #   service:
+  #     create: true
+  #   ingressRule:
+  #     path: /h
+  #     pathType: Prefix
+  #   pdb:
+  #     maxUnavailable: 1
+
+  # # example of dedicated matchers
+  # matcher:
+  #   enabled: true
+  #   replicas: 2
+  #   resources:
+  #     requests:
+  #       cpu: 100m
+  #       memory: 128Mi
+  #     limits:
+  #       memory: 256Mi
+  #   config: |
+  #     {{ $.Values.configValues.logging }}
+  #     {{ $.Values.configValues.database }}
+  #     PRODUCTION = True
+  #     ROLE_MATCHER = True
+  #     # Background tasks configuration
+  #     TASK_INDEX_CACHE = True
+  #   service:
+  #     create: true
+  #   ingressRule:
+  #     path: /m
+  #     pathType: Prefix
+  #   pdb:
+  #     maxUnavailable: 1
+
+  # #example of a dedicated curator
+  # curator:
+  #   enabled: true
+  #   replicas: 1
+  #   resources:
+  #     requests:
+  #       cpu: 100m
+  #       memory: 128Mi
+  #     limits:
+  #       memory: 256Mi
+  #   config: |
+  #     {{ $.Values.configValues.logging }}
+  #     {{ $.Values.configValues.database }}
+  #     PRODUCTION = True
+  #     ROLE_CURATOR = True
+  #     UI_ENABLED = True
+  #   service:
+  #     create: true
+  #   ingressRule:
+  #     path: /c
+  #     pathType: Prefix
+
+scheduler:
+  enabled: false
+  # resources:
+  #   requests:
+  #     cpu: 100m
+  #     memory: 128Mi
+  #   limits:
+  #     memory: 256Mi
+  # config: |
+  #   {{ $.Values.configValues.logging }}
+  #   {{ $.Values.configValues.database }}
+  #   PRODUCTION = True
+  #   ROLE_SCHEDULER = True
+  #   # APScheduler
+  #   TASK_FETCHER = True
+  #   TASK_INDEXER = True
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #  drop:
+  #  - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+podAnnotations: {}
+
+podLabels: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+ingress:
+  enabled: false
+  # annotations: {}
+  # className: nginx
+  # host: example.com  
+  # tls:
+  #   - hosts:
+  #       - example.com
+  #       - "*.example.com"
+  #     secretName: ingress-cert
+
+postgresql:
+  enabled: false
+
+  # auth:
+  #   database: "media_match"
+  #   username: "media_match"
+  #   password: "hunter2"
+    
+nginx:
+  enabled: false
+
+  # replicaCount: 2
+
+  # revisionHistoryLimit: 1
+
+  # affinity:
+  #   podAntiAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #       - topologyKey: kubernetes.io/hostname
+  #         labelSelector:
+  #           matchExpressions:
+  #             - key: app.kubernetes.io/name
+  #               operator: In
+  #               values:
+  #                 - nginx
+
+  # topologySpreadConstraints:
+  #   - maxSkew: 1
+  #     topologyKey: topology.kubernetes.io/zone
+  #     whenUnsatisfiable: DoNotSchedule
+  #     labelSelector:
+  #       matchExpressions:
+  #         - key: app.kubernetes.io/name
+  #           operator: In
+  #           values:
+  #             - nginx
+
+  # tls:
+  #   enabled: true
+  #   autoGenerated: true
+  #   # or bring your own (e.g. with cert-manager)
+  #   # existingSecret: nginx-tls
+
+  # readinessProbe:
+  #   path: /healthz
+
+  # serverBlock: |-
+  #   upstream hasher {
+  #     server hasher:5000;
+  #   }
+
+  #   upstream matcher {
+  #     server matcher:5000;
+  #   }
+
+  #   upstream curator {
+  #     server curator:5000;
+  #   }
+
+  #   server {
+  #     listen 8080;
+  #     server_name _;
+  #     access_log off;
+
+  #     location = /healthz {
+  #       return 200;
+  #     }
+
+  #     location / {
+  #       return 301 https://$host$request_uri;
+  #     }
+  #   }
+
+  #   server {
+  #     server_name _;
+
+  #     http2 on;
+
+  #     listen 8443 ssl;
+
+  #     ssl_certificate     /certs/tls.crt;
+  #     ssl_certificate_key /certs/tls.key;
+
+  #     location = / {
+  #       access_log off;
+  #       return 301 /ui/;
+  #     }
+
+  #     location = /healthz {
+  #       access_log off;
+  #       return 200;
+  #     }
+
+  #     location ~ ^/h/ {
+  #       proxy_pass http://hasher;
+  #     }
+
+  #     location ~ ^/m/ {
+  #       proxy_pass http://matcher;
+  #     }
+
+  #     location ~ ^/(c|ui|static)/ {
+  #       # match the default max content length (https://github.com/facebook/ThreatExchange/blob/55f7ef9c0270d7b0826fafd008dd2af156993f6e/hasher-matcher-actioner/src/OpenMediaMatch/blueprints/hashing.py#L37)
+  #       client_max_body_size 100m;
+  #       proxy_pass http://curator;
+  #     }
+  #   }

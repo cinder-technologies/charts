@@ -1,0 +1,27 @@
+{{- $values := $.Values }}
+{{- range $roleName, $roleCfg := .Values.roleGroups }}
+{{- if (and $roleCfg.enabled (and $roleCfg.service (hasKey $roleCfg.service "create") $roleCfg.service.create)) }}
+{{- $effectiveSvc := merge $roleCfg.service $values.roleDefaults.service }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $roleName }}
+  labels:
+    {{- include "hasher-matcher-actioner.labels" $ | nindent 4 }}
+  {{- with $effectiveSvc.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ $effectiveSvc.type }}
+  ports:
+    - name: http
+      port: {{ $effectiveSvc.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "hasher-matcher-actioner.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $roleName }}
+{{- end }}
+{{- end }}
