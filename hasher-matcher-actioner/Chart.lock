@@ -1,0 +1,9 @@
+dependencies:
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: 16.7.15
+- name: nginx
+  repository: https://charts.bitnami.com/bitnami
+  version: 21.0.6
+digest: sha256:6410ddd98af3ee9f0b728f8a24822dca4dc43139468306e2e91b30cea436092f
+generated: "2025-07-11T16:13:40.773516-04:00"

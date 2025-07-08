@@ -1,0 +1,15 @@
+{{- $values := $.Values }}
+{{- range $roleName, $roleCfg := .Values.roleGroups }}
+{{- if (and $roleCfg.enabled $roleCfg.config) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $roleName }}
+  labels:
+    {{- include "hasher-matcher-actioner.labels" $ | nindent 4 }}
+data:
+  omm_config.py: |
+{{- tpl $roleCfg.config $ | nindent 4 }}
+{{- end }}
+{{- end }}

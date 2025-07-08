@@ -1,0 +1,132 @@
+secret:
+  create: true
+
+database:
+  password: "hunter2"
+
+roleGroups:
+  hasher:
+    enabled: true
+    
+    replicas: 1
+
+    config: |
+      {{ $.Values.configValues.logging }}
+      {{ $.Values.configValues.database }}
+
+      PRODUCTION = False
+      ROLE_HASHER = True
+
+    service:
+      create: true
+
+  matcher:
+    enabled: true
+    
+    replicas: 1
+
+    config: |
+      {{ $.Values.configValues.logging }}
+      {{ $.Values.configValues.database }}
+
+      PRODUCTION = False
+      ROLE_MATCHER = True
+
+      # Background tasks configuration
+      TASK_INDEX_CACHE = True
+
+    service:
+      create: true
+
+  curator:
+    enabled: true
+    
+    replicas: 1
+
+    config: |
+      {{ $.Values.configValues.logging }}
+      {{ $.Values.configValues.database }}
+
+      PRODUCTION = False
+      ROLE_CURATOR = True
+      UI_ENABLED = True
+
+    service:
+      create: true
+
+scheduler:
+  enabled: true
+
+  config: |
+    {{ $.Values.configValues.logging }}
+    {{ $.Values.configValues.database }}
+
+    PRODUCTION = False
+
+    # APScheduler
+    TASK_FETCHER = True
+    TASK_INDEXER = True
+
+postgresql:
+  enabled: true
+
+  auth:
+    database: "media_match"
+    username: "media_match"
+    password: "hunter2"
+    
+nginx:
+  enabled: true
+
+  replicaCount: 1
+
+  revisionHistoryLimit: 1
+
+  readinessProbe:
+    path: /healthz
+
+  tls:
+    enabled: false
+  
+  serverBlock: |-
+    upstream hasher {
+      server hasher:5000;
+    }
+
+    upstream matcher {
+      server matcher:5000;
+    }
+
+    upstream curator {
+      server curator:5000;
+    }
+
+    server {
+      listen 8080;
+      server_name _;
+      access_log off;
+      http2 on;
+
+      location = /healthz {
+        return 200;
+      }
+
+      location = / {
+        access_log off;
+        return 301 /ui/;
+      }
+
+      location ~ ^/h/ {
+        proxy_pass http://hasher;
+      }
+
+      location ~ ^/m/ {
+        proxy_pass http://matcher;
+      }
+
+      location ~ ^/(c|ui|static)/ {
+        # match the default max content length (https://github.com/facebook/ThreatExchange/blob/55f7ef9c0270d7b0826fafd008dd2af156993f6e/hasher-matcher-actioner/src/OpenMediaMatch/blueprints/hashing.py#L37)
+        client_max_body_size 100m;
+        proxy_pass http://curator;
+      }
+    }
