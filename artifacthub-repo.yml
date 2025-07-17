@@ -1,0 +1,6 @@
+# Artifact Hub repository metadata file
+repositoryID: 158067e2-3235-47d9-97c1-a6055bff8321
+owners:
+  - name: cndr
+    email: infra-admins@cndr.io
+
