@@ -1,0 +1,23 @@
+apiVersion: v1
+entries:
+  hasher-matcher-actioner:
+  - apiVersion: v2
+    appVersion: 1.0.17
+    created: "2025-07-17T18:42:17.605741795Z"
+    dependencies:
+    - condition: postgresql.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 16.7.15
+    - condition: nginx.enabled
+      name: nginx
+      repository: https://charts.bitnami.com/bitnami
+      version: 21.0.6
+    description: A Helm chart for ThreatExchange/hasher-matcher-actioner
+    digest: f039f35b7338f846dfe4dcdf9aa3509a995824a585a4d7f72724e958fa3c21e8
+    name: hasher-matcher-actioner
+    type: application
+    urls:
+    - https://github.com/cinder-technologies/charts/releases/download/hasher-matcher-actioner-0.1.0/hasher-matcher-actioner-0.1.0.tgz
+    version: 0.1.0
+generated: "2025-07-17T18:42:17.605750321Z"
