@@ -1,6 +1,6 @@
 # hasher-matcher-actioner
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.17](https://img.shields.io/badge/AppVersion-1.0.17-informational?style=flat-square)
+![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.17](https://img.shields.io/badge/AppVersion-1.0.17-informational?style=flat-square)
 
 A Helm chart for ThreatExchange/hasher-matcher-actioner
 
@@ -38,6 +38,7 @@ A Helm chart for ThreatExchange/hasher-matcher-actioner
 | podLabels | object | `{}` |  |
 | podSecurityContext | object | `{}` |  |
 | postgresql.enabled | bool | `false` |  |
+| roleDefaults.gunicorn | object | `{}` |  |
 | roleDefaults.revisionHistoryLimit | int | `1` |  |
 | roleDefaults.service.annotations.foo | string | `"bar"` |  |
 | roleDefaults.service.port | int | `5000` |  |
@@ -45,7 +46,10 @@ A Helm chart for ThreatExchange/hasher-matcher-actioner
 | roleDefaults.strategy.rollingUpdate.maxSurge | string | `"25%"` |  |
 | roleDefaults.strategy.rollingUpdate.maxUnavailable | string | `"25%"` |  |
 | roleDefaults.strategy.type | string | `"RollingUpdate"` |  |
-| roleGroups | list | `[]` |  |
+| roleDefaults.workload.kind | string | `"Deployment"` |  |
+| roleDefaults.workload.minReadySeconds | int | `0` |  |
+| roleDefaults.workload.podManagementPolicy | string | `"OrderedReady"` |  |
+| roleGroups | object | `{}` |  |
 | secret.create | bool | `false` |  |
 | secret.name | string | `"hasher-matcher-actioner"` |  |
 | securityContext | object | `{}` |  |

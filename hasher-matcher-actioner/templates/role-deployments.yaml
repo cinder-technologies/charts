@@ -1,20 +1,36 @@
 {{ $values := $.Values }}
 {{- range $roleName, $roleCfg := .Values.roleGroups -}}
 {{- if $roleCfg.enabled -}}
+{{- $workloadCfg := merge (deepCopy (default (dict) $roleCfg.workload)) $values.roleDefaults.workload -}}
+{{- $workloadKind := default "Deployment" $workloadCfg.kind -}}
+{{- if not (has $workloadKind (list "Deployment" "StatefulSet")) -}}
+{{- fail (printf "roleGroups.%s.workload.kind must be Deployment or StatefulSet" $roleName) -}}
+{{- end -}}
+{{- $gunicornCfg := merge (deepCopy (default (dict) $roleCfg.gunicorn)) $values.roleDefaults.gunicorn -}}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: {{ $workloadKind }}
 metadata:
   name: {{ $roleName }}
   labels:
     {{- include "hasher-matcher-actioner.labels" $ | nindent 4 }}
 spec:
   replicas: {{ $roleCfg.replicas | default 1 }}
+  {{- with $workloadCfg.minReadySeconds }}
+  minReadySeconds: {{ . }}
+  {{- end }}
+  {{- if eq $workloadKind "Deployment" }}
   strategy:
     {{- $effectiveStrategy := coalesce $roleCfg.strategy $values.roleDefaults.strategy }}
     {{- with $effectiveStrategy }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
+  {{- else }}
+  serviceName: {{ default (printf "%s-headless" $roleName) $workloadCfg.serviceName }}
+  podManagementPolicy: {{ default "OrderedReady" $workloadCfg.podManagementPolicy }}
+  updateStrategy:
+    type: RollingUpdate
+  {{- end }}
   revisionHistoryLimit: {{ coalesce $roleCfg.revisionHistoryLimit $values.roleDefaults.revisionHistoryLimit }}
   selector:
     matchLabels:
@@ -53,6 +69,18 @@ spec:
             - "gunicorn"
             - "--bind"
             - "0.0.0.0:5000"
+            {{- with $gunicornCfg.workers }}
+            - "--workers"
+            - {{ . | quote }}
+            {{- end }}
+            {{- with $gunicornCfg.workerClass }}
+            - "--worker-class"
+            - {{ . | quote }}
+            {{- end }}
+            {{- with $gunicornCfg.threads }}
+            - "--threads"
+            - {{ . | quote }}
+            {{- end }}
             - "OpenMediaMatch.app:create_app()"
           env:
             - name: MIGRATION_COMMAND

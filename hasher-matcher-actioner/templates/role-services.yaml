@@ -1,7 +1,8 @@
 {{- $values := $.Values }}
 {{- range $roleName, $roleCfg := .Values.roleGroups }}
+{{- $workloadCfg := merge (deepCopy (default (dict) $roleCfg.workload)) $values.roleDefaults.workload }}
+{{- $effectiveSvc := merge (deepCopy (default (dict) $roleCfg.service)) $values.roleDefaults.service }}
 {{- if (and $roleCfg.enabled (and $roleCfg.service (hasKey $roleCfg.service "create") $roleCfg.service.create)) }}
-{{- $effectiveSvc := merge $roleCfg.service $values.roleDefaults.service }}
 ---
 apiVersion: v1
 kind: Service
@@ -15,6 +16,25 @@ metadata:
   {{- end }}
 spec:
   type: {{ $effectiveSvc.type }}
+  ports:
+    - name: http
+      port: {{ $effectiveSvc.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "hasher-matcher-actioner.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $roleName }}
+{{- end }}
+{{- if (and $roleCfg.enabled (eq $workloadCfg.kind "StatefulSet")) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ default (printf "%s-headless" $roleName) $workloadCfg.serviceName }}
+  labels:
+    {{- include "hasher-matcher-actioner.labels" $ | nindent 4 }}
+spec:
+  clusterIP: None
   ports:
     - name: http
       port: {{ $effectiveSvc.port }}
