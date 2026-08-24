@@ -1,8 +1,20 @@
 # hasher-matcher-actioner
 
-![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.17](https://img.shields.io/badge/AppVersion-1.0.17-informational?style=flat-square)
+![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.17](https://img.shields.io/badge/AppVersion-1.0.17-informational?style=flat-square)
 
 A Helm chart for ThreatExchange/hasher-matcher-actioner
+
+## Upgrading from 0.1.x
+
+Version 1.0.0 replaces role-group Deployments with `OrderedReady` StatefulSets.
+This is a breaking change: pod names become stable ordinals, role groups gain
+governing `<role>-headless` Services, scale-ups and updates proceed one pod at a
+time, and single-replica roles cannot surge during updates.
+
+Before upgrading, reduce each existing role-group Deployment to a replica count
+that can safely overlap the new StatefulSet. After every StatefulSet is healthy,
+delete the old Deployments. Before rolling back to 0.1.x, reduce the StatefulSets
+first so the recreated Deployments do not all start simultaneously.
 
 ## Requirements
 
@@ -43,12 +55,7 @@ A Helm chart for ThreatExchange/hasher-matcher-actioner
 | roleDefaults.service.annotations.foo | string | `"bar"` |  |
 | roleDefaults.service.port | int | `5000` |  |
 | roleDefaults.service.type | string | `"ClusterIP"` |  |
-| roleDefaults.strategy.rollingUpdate.maxSurge | string | `"25%"` |  |
-| roleDefaults.strategy.rollingUpdate.maxUnavailable | string | `"25%"` |  |
-| roleDefaults.strategy.type | string | `"RollingUpdate"` |  |
-| roleDefaults.workload.kind | string | `"Deployment"` |  |
-| roleDefaults.workload.minReadySeconds | int | `0` |  |
-| roleDefaults.workload.podManagementPolicy | string | `"OrderedReady"` |  |
+| roleDefaults.statefulSet.minReadySeconds | int | `0` |  |
 | roleGroups | object | `{}` |  |
 | secret.create | bool | `false` |  |
 | secret.name | string | `"hasher-matcher-actioner"` |  |

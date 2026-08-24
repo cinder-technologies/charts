@@ -1,6 +1,5 @@
 {{- $values := $.Values }}
 {{- range $roleName, $roleCfg := .Values.roleGroups }}
-{{- $workloadCfg := merge (deepCopy (default (dict) $roleCfg.workload)) $values.roleDefaults.workload }}
 {{- $effectiveSvc := merge (deepCopy (default (dict) $roleCfg.service)) $values.roleDefaults.service }}
 {{- if (and $roleCfg.enabled (and $roleCfg.service (hasKey $roleCfg.service "create") $roleCfg.service.create)) }}
 ---
@@ -25,12 +24,12 @@ spec:
     {{- include "hasher-matcher-actioner.selectorLabels" $ | nindent 4 }}
     app.kubernetes.io/component: {{ $roleName }}
 {{- end }}
-{{- if (and $roleCfg.enabled (eq $workloadCfg.kind "StatefulSet")) }}
+{{- if $roleCfg.enabled }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ default (printf "%s-headless" $roleName) $workloadCfg.serviceName }}
+  name: {{ printf "%s-headless" $roleName }}
   labels:
     {{- include "hasher-matcher-actioner.labels" $ | nindent 4 }}
 spec:
