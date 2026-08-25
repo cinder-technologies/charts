@@ -1,20 +1,24 @@
 {{ $values := $.Values }}
 {{- range $roleName, $roleCfg := .Values.roleGroups -}}
 {{- if $roleCfg.enabled -}}
+{{- $statefulSetCfg := merge (deepCopy (default (dict) $roleCfg.statefulSet)) $values.roleDefaults.statefulSet -}}
+{{- $gunicornCfg := merge (deepCopy (default (dict) $roleCfg.gunicorn)) $values.roleDefaults.gunicorn -}}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ $roleName }}
   labels:
     {{- include "hasher-matcher-actioner.labels" $ | nindent 4 }}
 spec:
   replicas: {{ $roleCfg.replicas | default 1 }}
-  strategy:
-    {{- $effectiveStrategy := coalesce $roleCfg.strategy $values.roleDefaults.strategy }}
-    {{- with $effectiveStrategy }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+  {{- with $statefulSetCfg.minReadySeconds }}
+  minReadySeconds: {{ . }}
+  {{- end }}
+  serviceName: {{ printf "%s-headless" $roleName }}
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
   revisionHistoryLimit: {{ coalesce $roleCfg.revisionHistoryLimit $values.roleDefaults.revisionHistoryLimit }}
   selector:
     matchLabels:
@@ -53,6 +57,18 @@ spec:
             - "gunicorn"
             - "--bind"
             - "0.0.0.0:5000"
+            {{- with $gunicornCfg.workers }}
+            - "--workers"
+            - {{ . | quote }}
+            {{- end }}
+            {{- with $gunicornCfg.workerClass }}
+            - "--worker-class"
+            - {{ . | quote }}
+            {{- end }}
+            {{- with $gunicornCfg.threads }}
+            - "--threads"
+            - {{ . | quote }}
+            {{- end }}
             - "OpenMediaMatch.app:create_app()"
           env:
             - name: MIGRATION_COMMAND
@@ -61,6 +77,10 @@ spec:
               value: "True"
             - name: OMM_CONFIG
               value: /config/omm_config.py
+            {{- with $gunicornCfg.ompNumThreads }}
+            - name: OMP_NUM_THREADS
+              value: {{ . | quote }}
+            {{- end }}
             {{- include "hasher-matcher-actioner.databaseEnv" $ | nindent 12 }}
             {{- with $roleCfg.env }}
             {{- toYaml . | nindent 12 }}

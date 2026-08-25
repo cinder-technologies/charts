@@ -31,11 +31,13 @@ migration:
       value: "INFO"
 
 roleDefaults:
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 25%
-      maxSurge: 25%
+  # All role groups use OrderedReady StatefulSets. Kubernetes waits for each
+  # pod's readiness probe before creating the next ordinal.
+  statefulSet:
+    minReadySeconds: 0
+
+  # Gunicorn uses its own defaults unless a role overrides these values.
+  gunicorn: {}
 
   revisionHistoryLimit: 1
 
@@ -102,7 +104,7 @@ configValues:
       }
     )
 
-roleGroups: []
+roleGroups: {}
   # # example of a monolithic workload
   # all-in-one:
   #   enabled: true
@@ -167,6 +169,13 @@ roleGroups: []
   # matcher:
   #   enabled: true
   #   replicas: 2
+  #   statefulSet:
+  #     minReadySeconds: 60
+  #   gunicorn:
+  #     workers: 1
+  #     workerClass: gthread
+  #     threads: 8
+  #     ompNumThreads: 1
   #   resources:
   #     requests:
   #       cpu: 100m
